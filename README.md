@@ -19,6 +19,19 @@ email: admin@admin.com
 password: admin123
 ```
 
+## Run The App
+
+From the project root:
+
+```bash
+npm start
+```
+
+This starts both services together:
+
+- Backend API: `http://localhost:5000/api`
+- Frontend app: `http://localhost:5173`
+
 ## Backend Setup
 
 ```bash

@@ -1,0 +1,15 @@
+{
+  "name": "bookshopsms",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "predev": "kill-port 5000 5173",
+    "dev": "concurrently -n BACKEND,FRONTEND -c green,cyan \"npm --prefix backend run dev\" \"npm --prefix frontend run dev -- --host localhost\"",
+    "start": "npm run dev",
+    "setup": "npm install && npm --prefix backend install && npm --prefix frontend install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0",
+    "kill-port": "^2.0.1"
+  }
+}
