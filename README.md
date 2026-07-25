@@ -10,7 +10,14 @@ Full-stack Bookshop Management System with Node.js, Express, MySQL, React, Tailw
 
 ## Database Setup
 
-The backend reads MySQL settings from `backend/.env`. Make sure the database named in `DB_NAME` exists and is reachable.
+The backend reads MySQL settings from the first `.env` it finds in the working directory, parent directory, or project root. In this repo, the active config is the project-root `.env`.
+
+Initialize the schema and seed data:
+
+```bash
+cd backend
+npm run db:init
+```
 
 Seeded admin login:
 
@@ -45,7 +52,7 @@ The current local `.env` contains the MySQL connection values:
 ```text
 DB_HOST=localhost
 DB_USER=root
-DB_NAME=BookShopsms
+DB_NAME=bookshopsms
 ```
 
 API base URL: `http://localhost:5000/api`

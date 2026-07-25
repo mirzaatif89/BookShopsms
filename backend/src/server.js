@@ -1,7 +1,7 @@
+import './config/env.js';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes.js';
 import booksRoutes from './routes/books.routes.js';
 import categoriesRoutes from './routes/categories.routes.js';
@@ -11,8 +11,6 @@ import purchasesRoutes from './routes/purchases.routes.js';
 import salesRoutes from './routes/sales.routes.js';
 import reportsRoutes from './routes/reports.routes.js';
 import { errorHandler, notFound } from './middleware/error.js';
-
-dotenv.config();
 
 const app = express();
 
