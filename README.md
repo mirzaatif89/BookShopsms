@@ -19,11 +19,12 @@ cd backend
 npm run db:init
 ```
 
-Seeded admin login:
+Admin credentials are read from `backend/.env` during seeding:
 
 ```text
-email: admin@admin.com
-password: admin123
+ADMIN_NAME=Admin
+ADMIN_EMAIL=admin@admin.com
+ADMIN_PASSWORD=change-this-password
 ```
 
 ## Run The App
@@ -53,6 +54,9 @@ The current local `.env` contains the MySQL connection values:
 DB_HOST=localhost
 DB_USER=root
 DB_NAME=bookshopsms
+ADMIN_NAME=Admin
+ADMIN_EMAIL=admin@admin.com
+ADMIN_PASSWORD=change-this-password
 ```
 
 API base URL: `http://localhost:5000/api`
@@ -61,6 +65,8 @@ Key routes:
 
 - `POST /api/auth/login`
 - `POST /api/auth/register` admin only
+- `GET/POST/PUT /api/products`
+- `POST /api/products/:id/variants/:variantId/adjust`
 - `GET/POST/PUT/DELETE /api/books`
 - `GET/POST/PUT/DELETE /api/categories`
 - `GET/POST/PUT/DELETE /api/suppliers`
@@ -71,6 +77,8 @@ Key routes:
 - `GET /api/reports/best-selling`
 - `GET /api/reports/low-stock`
 - `GET /api/reports/profit-loss`
+
+Architecture notes for the expanded POS domain are in `docs/architecture.md`.
 
 ## Frontend Setup
 
