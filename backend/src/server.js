@@ -11,6 +11,11 @@ import customersRoutes from './routes/customers.routes.js';
 import purchasesRoutes from './routes/purchases.routes.js';
 import salesRoutes from './routes/sales.routes.js';
 import reportsRoutes from './routes/reports.routes.js';
+import settingsRoutes from './routes/settings.routes.js';
+import returnsRoutes from './routes/returns.routes.js';
+import expensesRoutes from './routes/expenses.routes.js';
+import auditRoutes from './routes/audit.routes.js';
+import usersRoutes from './routes/users.routes.js';
 import { errorHandler, notFound } from './middleware/error.js';
 
 const app = express();
@@ -29,6 +34,11 @@ app.use('/api/customers', customersRoutes);
 app.use('/api/purchases', purchasesRoutes);
 app.use('/api/sales', salesRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/returns', returnsRoutes);
+app.use('/api/expenses', expensesRoutes);
+app.use('/api/audit-logs', auditRoutes);
+app.use('/api/users', usersRoutes);
 app.use(notFound);
 app.use(errorHandler);
 

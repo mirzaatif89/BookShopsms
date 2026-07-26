@@ -1,15 +1,23 @@
 import React from 'react';
-import { BookOpen, ChartColumn, LayoutDashboard, LogOut, Receipt, ShoppingBag, Users } from 'lucide-react';
+import { Boxes, ChartColumn, ClipboardList, FolderTree, LayoutDashboard, LogOut, Receipt, RotateCcw, Settings, ShieldCheck, ShoppingBag, Tags, Truck, Users, WalletCards } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const nav = [
-  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'cashier'] },
-  { to: '/books', label: 'Books', icon: BookOpen, roles: ['admin', 'manager', 'cashier'] },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'cashier', 'inventory_staff'] },
+  { to: '/products', label: 'Products', icon: Tags, roles: ['admin', 'manager', 'cashier', 'inventory_staff'] },
+  { to: '/categories', label: 'Categories', icon: FolderTree, roles: ['admin', 'manager', 'inventory_staff'] },
+  { to: '/inventory', label: 'Inventory', icon: Boxes, roles: ['admin', 'manager', 'inventory_staff'] },
   { to: '/pos', label: 'POS', icon: Receipt, roles: ['admin', 'manager', 'cashier'] },
-  { to: '/purchases', label: 'Purchases', icon: ShoppingBag, roles: ['admin', 'manager'] },
+  { to: '/purchases', label: 'Purchases', icon: ShoppingBag, roles: ['admin', 'manager', 'inventory_staff'] },
+  { to: '/suppliers', label: 'Suppliers', icon: Truck, roles: ['admin', 'manager', 'inventory_staff'] },
   { to: '/customers', label: 'Customers', icon: Users, roles: ['admin', 'manager', 'cashier'] },
-  { to: '/reports', label: 'Reports', icon: ChartColumn, roles: ['admin', 'manager'] }
+  { to: '/returns', label: 'Returns', icon: RotateCcw, roles: ['admin', 'manager'] },
+  { to: '/expenses', label: 'Expenses', icon: WalletCards, roles: ['admin', 'manager'] },
+  { to: '/reports', label: 'Reports', icon: ChartColumn, roles: ['admin', 'manager'] },
+  { to: '/users', label: 'Users', icon: ShieldCheck, roles: ['admin'] },
+  { to: '/settings', label: 'Settings', icon: Settings, roles: ['admin'] },
+  { to: '/audit-logs', label: 'Audit Logs', icon: ClipboardList, roles: ['admin'] }
 ];
 
 export default function AppLayout() {

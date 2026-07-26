@@ -90,9 +90,13 @@ async function createSchema(pool) {
     `CREATE TABLE IF NOT EXISTS suppliers (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
       name VARCHAR(191) NOT NULL,
+      contact_person VARCHAR(120) NULL,
       contact_number VARCHAR(50) NULL,
       address TEXT NULL,
       email VARCHAR(191) NULL,
+      opening_balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      current_balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      notes TEXT NULL,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
@@ -103,6 +107,7 @@ async function createSchema(pool) {
       email VARCHAR(191) NULL,
       address TEXT NULL,
       credit_balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      notes TEXT NULL,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
@@ -187,14 +192,24 @@ async function createSchema(pool) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     `CREATE TABLE IF NOT EXISTS sales (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      receipt_number VARCHAR(80) NULL,
       customer_id BIGINT UNSIGNED NULL,
       cashier_id BIGINT UNSIGNED NOT NULL,
+      subtotal DECIMAL(12,2) NOT NULL DEFAULT 0.00,
       total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
       discount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-      payment_method ENUM('cash', 'easypaisa', 'jazzcash') NOT NULL DEFAULT 'cash',
-      status ENUM('paid', 'credit', 'cancelled') NOT NULL DEFAULT 'paid',
+      discount_type ENUM('fixed', 'percentage') NOT NULL DEFAULT 'fixed',
+      tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      amount_received DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      change_due DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      payment_method ENUM('cash', 'card', 'bank_transfer', 'mobile_wallet', 'credit', 'split', 'easypaisa', 'jazzcash') NOT NULL DEFAULT 'cash',
+      payment_status ENUM('paid', 'partial', 'unpaid') NOT NULL DEFAULT 'paid',
+      status ENUM('completed', 'held', 'cancelled', 'partially_returned', 'fully_returned', 'paid', 'credit') NOT NULL DEFAULT 'completed',
+      notes TEXT NULL,
       sale_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
+      UNIQUE KEY uniq_sales_receipt_number (receipt_number),
       KEY idx_sales_customer_id (customer_id),
       KEY idx_sales_cashier_id (cashier_id),
       CONSTRAINT fk_sales_customer
@@ -209,13 +224,16 @@ async function createSchema(pool) {
     `CREATE TABLE IF NOT EXISTS sale_items (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
       sale_id BIGINT UNSIGNED NOT NULL,
-      book_id BIGINT UNSIGNED NOT NULL,
+      book_id BIGINT UNSIGNED NULL,
+      product_variant_id BIGINT UNSIGNED NULL,
       quantity INT NOT NULL,
       unit_price DECIMAL(12,2) NOT NULL,
+      discount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
       subtotal DECIMAL(12,2) NOT NULL,
       PRIMARY KEY (id),
       KEY idx_sale_items_sale_id (sale_id),
       KEY idx_sale_items_book_id (book_id),
+      KEY idx_sale_items_variant_id (product_variant_id),
       CONSTRAINT fk_sale_items_sale
         FOREIGN KEY (sale_id) REFERENCES sales (id)
         ON DELETE CASCADE
@@ -227,11 +245,20 @@ async function createSchema(pool) {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci`,
     `CREATE TABLE IF NOT EXISTS purchases (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+      purchase_number VARCHAR(80) NULL,
       supplier_id BIGINT UNSIGNED NOT NULL,
       total_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      discount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      amount_paid DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      balance DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+      payment_method ENUM('cash', 'card', 'bank_transfer', 'mobile_wallet', 'credit') NOT NULL DEFAULT 'cash',
+      payment_status ENUM('paid', 'partial', 'unpaid') NOT NULL DEFAULT 'unpaid',
+      notes TEXT NULL,
       status ENUM('pending', 'received') NOT NULL DEFAULT 'pending',
       purchase_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       PRIMARY KEY (id),
+      UNIQUE KEY uniq_purchases_number (purchase_number),
       KEY idx_purchases_supplier_id (supplier_id),
       CONSTRAINT fk_purchases_supplier
         FOREIGN KEY (supplier_id) REFERENCES suppliers (id)
@@ -241,12 +268,15 @@ async function createSchema(pool) {
     `CREATE TABLE IF NOT EXISTS purchase_items (
       id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
       purchase_id BIGINT UNSIGNED NOT NULL,
-      book_id BIGINT UNSIGNED NOT NULL,
+      book_id BIGINT UNSIGNED NULL,
+      product_variant_id BIGINT UNSIGNED NULL,
       quantity INT NOT NULL,
       unit_cost DECIMAL(12,2) NOT NULL,
+      discount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
       PRIMARY KEY (id),
       KEY idx_purchase_items_purchase_id (purchase_id),
       KEY idx_purchase_items_book_id (book_id),
+      KEY idx_purchase_items_variant_id (product_variant_id),
       CONSTRAINT fk_purchase_items_purchase
         FOREIGN KEY (purchase_id) REFERENCES purchases (id)
         ON DELETE CASCADE
@@ -393,12 +423,52 @@ async function addColumnIfMissing(pool, table, column, definition) {
   }
 }
 
+async function columnType(pool, table, column) {
+  const [rows] = await pool.query(
+    `SELECT column_type FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ?
+     LIMIT 1`,
+    [table, column]
+  );
+  return rows[0]?.COLUMN_TYPE || rows[0]?.column_type;
+}
+
 async function migrateExistingSchema(pool) {
   await addColumnIfMissing(pool, 'categories', 'parent_id', 'BIGINT UNSIGNED NULL AFTER id');
   await addColumnIfMissing(pool, 'categories', 'status', "ENUM('active', 'inactive') NOT NULL DEFAULT 'active' AFTER description");
   await addColumnIfMissing(pool, 'categories', 'created_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP AFTER status');
   await addColumnIfMissing(pool, 'categories', 'updated_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at');
   await pool.query("ALTER TABLE users MODIFY role ENUM('admin', 'manager', 'cashier', 'inventory_staff') NOT NULL DEFAULT 'cashier'");
+  await addColumnIfMissing(pool, 'suppliers', 'contact_person', 'VARCHAR(120) NULL AFTER name');
+  await addColumnIfMissing(pool, 'suppliers', 'opening_balance', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER email');
+  await addColumnIfMissing(pool, 'suppliers', 'current_balance', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER opening_balance');
+  await addColumnIfMissing(pool, 'suppliers', 'notes', 'TEXT NULL AFTER current_balance');
+  await addColumnIfMissing(pool, 'customers', 'notes', 'TEXT NULL AFTER credit_balance');
+  await addColumnIfMissing(pool, 'sales', 'receipt_number', 'VARCHAR(80) NULL AFTER id');
+  await addColumnIfMissing(pool, 'sales', 'subtotal', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER cashier_id');
+  await addColumnIfMissing(pool, 'sales', 'discount_type', "ENUM('fixed', 'percentage') NOT NULL DEFAULT 'fixed' AFTER discount");
+  await addColumnIfMissing(pool, 'sales', 'tax_amount', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER discount_type');
+  await addColumnIfMissing(pool, 'sales', 'amount_paid', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER tax_amount');
+  await addColumnIfMissing(pool, 'sales', 'amount_received', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER amount_paid');
+  await addColumnIfMissing(pool, 'sales', 'change_due', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER amount_received');
+  await addColumnIfMissing(pool, 'sales', 'payment_status', "ENUM('paid', 'partial', 'unpaid') NOT NULL DEFAULT 'paid' AFTER payment_method");
+  await addColumnIfMissing(pool, 'sales', 'notes', 'TEXT NULL AFTER status');
+  await pool.query("ALTER TABLE sales MODIFY payment_method ENUM('cash', 'card', 'bank_transfer', 'mobile_wallet', 'credit', 'split', 'easypaisa', 'jazzcash') NOT NULL DEFAULT 'cash'");
+  await pool.query("ALTER TABLE sales MODIFY status ENUM('completed', 'held', 'cancelled', 'partially_returned', 'fully_returned', 'paid', 'credit') NOT NULL DEFAULT 'completed'");
+  await addColumnIfMissing(pool, 'sale_items', 'product_variant_id', 'BIGINT UNSIGNED NULL AFTER book_id');
+  await addColumnIfMissing(pool, 'sale_items', 'discount', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER unit_price');
+  await pool.query(`ALTER TABLE sale_items MODIFY book_id ${await columnType(pool, 'books', 'id')} NULL`);
+  await addColumnIfMissing(pool, 'purchases', 'purchase_number', 'VARCHAR(80) NULL AFTER id');
+  await addColumnIfMissing(pool, 'purchases', 'discount', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER total_amount');
+  await addColumnIfMissing(pool, 'purchases', 'tax_amount', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER discount');
+  await addColumnIfMissing(pool, 'purchases', 'amount_paid', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER tax_amount');
+  await addColumnIfMissing(pool, 'purchases', 'balance', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER amount_paid');
+  await addColumnIfMissing(pool, 'purchases', 'payment_method', "ENUM('cash', 'card', 'bank_transfer', 'mobile_wallet', 'credit') NOT NULL DEFAULT 'cash' AFTER balance");
+  await addColumnIfMissing(pool, 'purchases', 'payment_status', "ENUM('paid', 'partial', 'unpaid') NOT NULL DEFAULT 'unpaid' AFTER payment_method");
+  await addColumnIfMissing(pool, 'purchases', 'notes', 'TEXT NULL AFTER payment_status');
+  await addColumnIfMissing(pool, 'purchase_items', 'product_variant_id', 'BIGINT UNSIGNED NULL AFTER book_id');
+  await addColumnIfMissing(pool, 'purchase_items', 'discount', 'DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER unit_cost');
+  await pool.query(`ALTER TABLE purchase_items MODIFY book_id ${await columnType(pool, 'books', 'id')} NULL`);
 }
 
 async function getId(pool, table, column, value) {
@@ -606,6 +676,51 @@ async function seedLookupTables(pool) {
   }
 }
 
+async function seedSettings(pool) {
+  const settings = {
+    shop: {
+      name: 'Bookshop',
+      logo_url: '',
+      address: '',
+      phone: '',
+      currency: 'Rs',
+      date_format: 'en-PK'
+    },
+    receipt: {
+      footer: 'Thank you for shopping with us.',
+      return_policy: 'Returns accepted with original receipt.',
+      format: 'thermal'
+    },
+    sales: {
+      default_discount: 0,
+      discount_type: 'fixed',
+      default_tax_rate: 0,
+      max_cashier_discount_percent: 5,
+      allow_negative_stock: false
+    },
+    inventory: {
+      low_stock_alert_level: 5
+    },
+    barcode: {
+      enabled: true,
+      prefix: ''
+    },
+    backup: {
+      enabled: false,
+      frequency: 'daily'
+    }
+  };
+
+  for (const [key, value] of Object.entries(settings)) {
+    await pool.query(
+      `INSERT INTO settings (setting_key, setting_value)
+       VALUES (?, CAST(? AS JSON))
+       ON DUPLICATE KEY UPDATE setting_value = setting_value`,
+      [key, JSON.stringify(value)]
+    );
+  }
+}
+
 async function seedBooks(pool) {
   const samples = [
     {
@@ -681,6 +796,7 @@ async function main() {
     await seedRolesAndPermissions(pool);
     await seedAdmin(pool);
     await seedLookupTables(pool);
+    await seedSettings(pool);
     await seedBooks(pool);
     console.log(`Database ready: ${dbConfig.database}`);
     console.log(`Seeded admin user: ${process.env.ADMIN_EMAIL}`);

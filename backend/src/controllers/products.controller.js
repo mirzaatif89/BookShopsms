@@ -118,6 +118,58 @@ export async function listProducts(req, res, next) {
   }
 }
 
+export async function listProductVariants(req, res, next) {
+  try {
+    const filters = ['p.status = "active"', 'v.status = "active"'];
+    const params = [];
+    if (req.query.search) {
+      const q = `%${req.query.search}%`;
+      filters.push('(p.name LIKE ? OR p.product_code LIKE ? OR p.barcode LIKE ? OR v.variant_name LIKE ? OR v.sku LIKE ? OR v.barcode LIKE ? OR p.isbn LIKE ?)');
+      params.push(q, q, q, q, q, q, q);
+    }
+    if (req.query.category_id) {
+      filters.push('p.category_id = ?');
+      params.push(req.query.category_id);
+    }
+    if (req.query.subcategory_id) {
+      filters.push('p.subcategory_id = ?');
+      params.push(req.query.subcategory_id);
+    }
+    const [items] = await pool.query(
+      `SELECT v.id AS product_variant_id, v.product_id, v.variant_name, v.sku, v.barcode, v.purchase_price, v.sale_price,
+              v.stock_quantity, v.minimum_stock_level, p.name AS product_name, p.product_code, p.brand,
+              p.author, p.publisher, p.isbn, c.name AS category_name, sc.name AS subcategory_name
+       FROM product_variants v
+       JOIN products p ON p.id = v.product_id
+       LEFT JOIN categories c ON c.id = p.category_id
+       LEFT JOIN categories sc ON sc.id = p.subcategory_id
+       WHERE ${filters.join(' AND ')}
+       ORDER BY p.name, v.variant_name
+       LIMIT 50`,
+      params
+    );
+    res.json({ items });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listStockMovements(req, res, next) {
+  try {
+    const [items] = await pool.query(
+      `SELECT sm.*, CONCAT(p.name, ' - ', v.variant_name) AS product_name, u.name AS user_name
+       FROM stock_movements sm
+       LEFT JOIN product_variants v ON v.id = sm.product_variant_id
+       LEFT JOIN products p ON p.id = v.product_id
+       LEFT JOIN users u ON u.id = sm.user_id
+       ORDER BY sm.created_at DESC LIMIT 200`
+    );
+    res.json({ items });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getProduct(req, res, next) {
   try {
     const [[product]] = await pool.query('SELECT * FROM products WHERE id = ?', [req.params.id]);

@@ -13,10 +13,16 @@ router.post(
   authorize('admin', 'manager', 'cashier'),
   [
     body('items').isArray({ min: 1 }),
-    body('items.*.book_id').isInt(),
+    body('items.*.book_id').optional().isInt(),
+    body('items.*.product_variant_id').optional().isInt(),
     body('items.*.quantity').isInt({ min: 1 }),
     body('discount').optional().isFloat({ min: 0 }),
-    body('payment_method').isIn(['cash', 'easypaisa', 'jazzcash'])
+    body('discount_type').optional().isIn(['fixed', 'percentage']),
+    body('tax_rate').optional().isFloat({ min: 0 }),
+    body('amount_received').optional().isFloat({ min: 0 }),
+    body('amount_paid').optional().isFloat({ min: 0 }),
+    body('status').optional().isIn(['completed', 'held', 'credit']),
+    body('payment_method').isIn(['cash', 'card', 'bank_transfer', 'mobile_wallet', 'credit', 'split', 'easypaisa', 'jazzcash'])
   ],
   validate,
   createSale

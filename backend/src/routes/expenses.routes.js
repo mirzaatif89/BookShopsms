@@ -6,15 +6,28 @@ import { validate } from '../middleware/validate.js';
 
 const router = Router();
 const controller = crudController({
-  table: 'suppliers',
-  fields: ['name', 'contact_person', 'contact_number', 'address', 'email', 'opening_balance', 'current_balance', 'notes'],
-  searchable: ['name', 'contact_person', 'contact_number', 'email']
+  table: 'expenses',
+  fields: ['category', 'amount', 'expense_date', 'payment_method', 'description', 'user_id'],
+  searchable: ['category', 'description']
 });
 
-router.use(authenticate, authorize('admin', 'manager', 'inventory_staff'));
+router.use(authenticate, authorize('admin', 'manager'));
 router.get('/', controller.list);
 router.get('/:id', param('id').isInt(), validate, controller.get);
-router.post('/', body('name').notEmpty(), validate, controller.create);
+router.post(
+  '/',
+  [
+    body('category').notEmpty(),
+    body('amount').isFloat({ min: 0 }),
+    body('expense_date').isISO8601(),
+    body('payment_method').optional().isIn(['cash', 'card', 'bank_transfer', 'mobile_wallet'])
+  ],
+  validate,
+  (req, res, next) => {
+    req.body.user_id = req.user.id;
+    controller.create(req, res, next);
+  }
+);
 router.put('/:id', param('id').isInt(), validate, controller.update);
 router.delete('/:id', authorize('admin'), param('id').isInt(), validate, controller.remove);
 

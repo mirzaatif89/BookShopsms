@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { body, param } from 'express-validator';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { adjustVariantStock, createProduct, getProduct, listProducts, updateProduct } from '../controllers/products.controller.js';
+import { adjustVariantStock, createProduct, getProduct, listProductVariants, listProducts, listStockMovements, updateProduct } from '../controllers/products.controller.js';
 
 const router = Router();
 
@@ -24,6 +24,8 @@ const productRules = [
 
 router.use(authenticate);
 router.get('/', listProducts);
+router.get('/variants/search', listProductVariants);
+router.get('/stock-movements', authorize('admin', 'manager', 'inventory_staff'), listStockMovements);
 router.get('/:id', param('id').isInt(), validate, getProduct);
 router.post('/', authorize('admin', 'manager', 'inventory_staff'), productRules, validate, createProduct);
 router.put('/:id', authorize('admin', 'manager', 'inventory_staff'), param('id').isInt(), validate, updateProduct);
